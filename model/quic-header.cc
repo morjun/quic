@@ -44,7 +44,7 @@ QuicHeader::QuicHeader ()
   m_s (SPIN_ZERO), // SHORT HEADER ONLY
   m_k (PHASE_ZERO), // SHORT HEADER ONLY
 
-  m_packetLength(0), // SHORT HEADER ONLY
+  m_packetLength(0), // SHORT HEADER ONLY, 'PP' Field in Flags
 
   m_version (0), // LONG HEADER ONLY
 
@@ -68,11 +68,11 @@ std::string
 QuicHeader::TypeToString () const
 {
   static const char* longTypeNames[6] = {
-    "Version Negotiation",
     "Initial",
-    "Retry",
-    "Handshake",
     "0-RTT Protected",
+    "Handshake",
+    "Retry",
+    "Version Negotiation",
     "None"
   };
   static const char* shortTypeNames[4] = {
@@ -129,11 +129,14 @@ QuicHeader::CalculateHeaderLength () const
 
   if (IsLong ())
     {
-      len = 8 + 64 + 32 + 32; // Flags + DCID + Version + Packet Number
+      len = 8 + 32 + 8 + 8 + GetConnectionIdLen() + GetSCIDLen(); // Flags + Version + DCID Length + SCID Length + DCID + SCID
     }
   else
     {
-      len = 8 + 64 * HasConnectionId () + GetPacketNumLen (); // Flags + DCID + Packet Number
+      len = 8 + 160 * HasConnectionId () + GetPacketNumLen (); // Flags + DCID + Packet Number
+      // DCID 최대 길이 160비트
+
+      // TODO: HasConnectionId 수정 (m_c 사용 X)
     }
   return len / 8;
 }
@@ -147,7 +150,7 @@ QuicHeader::GetPacketNumLen () const
     }
   else
     {
-      switch (m_type) // SHORT 헤더에서는 PP 필드(패킷 번호 필드 바이트 수 - 1)로
+      switch (m_packetLength)
         {
         case ONE_OCTECT:
           {
@@ -179,31 +182,38 @@ QuicHeader::Serialize (Buffer::Iterator start) const
 
   Buffer::Iterator i = start;
 
-  uint8_t t = m_type + (m_form << 7);
+  uint8_t t = (m_form << 7) + (m_fixed << 6);
 
-  // F.....PP
+  // F1......
 
   if (m_form) // LONG Header
     {
+      t += (m_type << 4); // 11TTXXXX
       i.WriteU8 (t);
-      i.WriteHtonU64 (m_connectionId);
       i.WriteHtonU32 (m_version);
+
+      i.WriteU8 (m_DCIDLength);
+      i.WriteHtonU64 (m_connectionId);
+
+      i.WriteU8 (m_SCIDLength);
+      i.WriteHtonU64 (m_SCID);
+
       if (!IsVersionNegotiation ())
         {
-          i.WriteHtonU32 (m_packetNumber.GetValue ()); // Long header에서의 패킷 번호 필드는
+          i.WriteHtonU32 (m_packetNumber.GetValue ()); // Long header에서의 패킷 번호 필드는 ?
         }
     }
   else
     {
-      t += (m_c << 6) + (m_k << 5); // 0CK...PP
+      t += (m_s << 5) + (m_k << 2) + m_packetLength; // 01SRRKPP
       i.WriteU8 (t);
 
-      if (m_c)
+      if (HasConnectionId ())
         {
           i.WriteHtonU64 (m_connectionId); //Little endian -> Big endian
         }
 
-      switch (m_type)
+      switch (m_packetLength)
         {
         case ONE_OCTECT:
           i.WriteU8 ((uint8_t)m_packetNumber.GetValue ());
@@ -231,9 +241,9 @@ QuicHeader::Deserialize (Buffer::Iterator start)
 
   if (IsShort ())
     {
-      m_c = (t & 0x40) >> 6;
-      m_k = (t & 0x20) >> 5;
-      SetTypeByte (t & 0x1F);
+      m_s = (t & 0x20) >> 5;
+      m_k = (t & 0x04) >> 2;
+      SetTypeByte (t & 0x1F); // ?
     }
   else
     {
@@ -243,7 +253,7 @@ QuicHeader::Deserialize (Buffer::Iterator start)
 
   if (HasConnectionId ())
     {
-      SetConnectionID (i.ReadNtohU64 ());
+      SetConnectionID (i.ReadNtohU64 ()); // TODO
     }
 
   if (IsLong ())
