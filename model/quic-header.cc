@@ -37,12 +37,25 @@ NS_OBJECT_ENSURE_REGISTERED (QuicHeader);
 
 QuicHeader::QuicHeader ()
   : m_form (SHORT),
-  m_c (false),
-  m_k (PHASE_ZERO),
-  m_type (0),
-  m_connectionId (0),
+  m_fixed(1),
+
+  m_type (0), // LONG HEADER ONLY
+
+  m_s (SPIN_ZERO), // SHORT HEADER ONLY
+  m_k (PHASE_ZERO), // SHORT HEADER ONLY
+
+  m_packetLength(0), // SHORT HEADER ONLY
+
+  m_version (0), // LONG HEADER ONLY
+
+  m_DCIDLength (0),
+  m_connectionId (0), // = DCID
+
+  m_SCIDLength (0),
+  m_SCID (0), // LONG HEADER ONLY
+
   m_packetNumber (0),
-  m_version (0)
+  m_c (false) // (Deprecated)(Short header에서만) DCID가 있는지 없는지
 {
 }
 
@@ -116,11 +129,11 @@ QuicHeader::CalculateHeaderLength () const
 
   if (IsLong ())
     {
-      len = 8 + 64 + 32 + 32;
+      len = 8 + 64 + 32 + 32; // Flags + DCID + Version + Packet Number
     }
   else
     {
-      len = 8 + 64 * HasConnectionId () + GetPacketNumLen ();
+      len = 8 + 64 * HasConnectionId () + GetPacketNumLen (); // Flags + DCID + Packet Number
     }
   return len / 8;
 }
@@ -134,7 +147,7 @@ QuicHeader::GetPacketNumLen () const
     }
   else
     {
-      switch (m_type)
+      switch (m_type) // SHORT 헤더에서는 PP 필드(패킷 번호 필드 바이트 수 - 1)로
         {
         case ONE_OCTECT:
           {
@@ -161,31 +174,33 @@ void
 QuicHeader::Serialize (Buffer::Iterator start) const
 {
   NS_LOG_FUNCTION (this);
-  NS_ASSERT (m_type != NONE or m_form == SHORT);
+  NS_ASSERT (m_type != NONE or m_form == SHORT); // Short Header
   NS_LOG_INFO ("Serialize::Serialized Size " << CalculateHeaderLength ());
 
   Buffer::Iterator i = start;
 
   uint8_t t = m_type + (m_form << 7);
 
-  if (m_form)
+  // F.....PP
+
+  if (m_form) // LONG Header
     {
       i.WriteU8 (t);
       i.WriteHtonU64 (m_connectionId);
       i.WriteHtonU32 (m_version);
       if (!IsVersionNegotiation ())
         {
-          i.WriteHtonU32 (m_packetNumber.GetValue ());
+          i.WriteHtonU32 (m_packetNumber.GetValue ()); // Long header에서의 패킷 번호 필드는
         }
     }
   else
     {
-      t += (m_c << 6) + (m_k << 5);
+      t += (m_c << 6) + (m_k << 5); // 0CK...PP
       i.WriteU8 (t);
 
       if (m_c)
         {
-          i.WriteHtonU64 (m_connectionId);
+          i.WriteHtonU64 (m_connectionId); //Little endian -> Big endian
         }
 
       switch (m_type)

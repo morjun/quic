@@ -68,6 +68,15 @@ public:
   } TypeLong_t;
 
   /**
+   * \brief Quic header spin bit values
+   */
+  typedef enum
+  {
+    SPIN_ZERO = 0,  //!< Phase 0
+    SPIN_ONE  = 1   //!< Phase 1
+  } Spin_t;
+
+  /**
    * \brief Quic header key phase bit values
    */
   typedef enum
@@ -335,12 +344,26 @@ private:
   uint32_t CalculateHeaderLength () const;
 
   bool m_form;                      //!< Form bit
-  bool m_c;                         //!< Connection id flag
-  bool m_k;                         //!< Key phase bit
+  bool m_fixed;                      //!< Fixed bit
+
   uint8_t m_type;                   //!< Type byte
+
+  bool m_s;                         //!< Spin bit
+  bool m_k;                         //!< Key phase bit
+
+  bool m_c;                         //!< Connection id flag
+
+  uint8_t m_packetLength;          //!< Packet length
+
+  uint8_t m_DCIDLength;             //!< Source Connection Id Length
   uint64_t m_connectionId;          //!< Connection Id
+
+  uint8_t m_SCIDLength;             //!< Source Connection Id Length
+  uint64_t m_SCID;                  //!< Source Connection Id
+
   SequenceNumber32 m_packetNumber;  //!< Packet number
   uint32_t m_version;               //!< Version
+
 };
 
 } // namespace ns3
