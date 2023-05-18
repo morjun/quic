@@ -59,11 +59,13 @@ public:
    */
   typedef enum
   {
-    VERSION_NEGOTIATION = 0,  //!< Version Negotiation
-    INITIAL  = 1,             //!< Initial
-    RETRY  = 2,               //!< Retry
-    HANDSHAKE  = 3,           //!< Handshake
-    ZRTT_PROTECTED  = 4,      //!< 0-Rtt Protected
+    INITIAL  = 0,             //!< Initial
+    ZRTT_PROTECTED  = 1,      //!< 0-Rtt Protected
+    HANDSHAKE  = 2,           //!< Handshake
+    RETRY  = 3,               //!< Retry
+
+    VERSION_NEGOTIATION = 4,  //!< Version Negotiation
+
     NONE = 5                  //!< No type byte
   } TypeLong_t;
 
@@ -195,7 +197,25 @@ public:
    * \brief Set the type byte
    * \param typeByte the type byte for this QuicHeader
    */
-  void SetTypeByte (uint8_t typeByte);
+  void SetTypeField (uint8_t typeByte);
+
+  /**
+   * \brief Set the packet length
+   * \param packetLength the packet length for this QuicHeader
+   */
+  void SetPacketLength (uint8_t packetLength);
+
+  /**
+   * \brief Get the DCID Length
+   * \return The DCID for this QuicHeader
+   */
+  uint8_t GetDCIDLen () const;
+
+  /**
+   * \brief Get the SCID Length
+   * \return The SCID for this QuicHeader
+   */
+  uint8_t GetSCIDLen () const;
 
   /**
    * \brief Get the connection id

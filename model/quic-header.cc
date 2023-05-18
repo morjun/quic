@@ -22,570 +22,599 @@
  *
  */
 
-#include <stdint.h>
-#include <iostream>
 #include "quic-header.h"
-#include "ns3/buffer.h"
+
 #include "ns3/address-utils.h"
+#include "ns3/buffer.h"
 #include "ns3/log.h"
 
-namespace ns3 {
+#include <iostream>
+#include <stdint.h>
 
-NS_LOG_COMPONENT_DEFINE ("QuicHeader");
+namespace ns3
+{
 
-NS_OBJECT_ENSURE_REGISTERED (QuicHeader);
+NS_LOG_COMPONENT_DEFINE("QuicHeader");
 
-QuicHeader::QuicHeader ()
-  : m_form (SHORT),
-  m_fixed(1),
+NS_OBJECT_ENSURE_REGISTERED(QuicHeader);
 
-  m_type (0), // LONG HEADER ONLY
+QuicHeader::QuicHeader()
+    : m_form(SHORT),
+      m_fixed(1),
 
-  m_s (SPIN_ZERO), // SHORT HEADER ONLY
-  m_k (PHASE_ZERO), // SHORT HEADER ONLY
+      m_type(0), // LONG HEADER ONLY
 
-  m_packetLength(0), // SHORT HEADER ONLY, 'PP' Field in Flags
+      m_s(SPIN_ZERO),  // SHORT HEADER ONLY
+      m_k(PHASE_ZERO), // SHORT HEADER ONLY
 
-  m_version (0), // LONG HEADER ONLY
+      m_packetLength(0), // SHORT HEADER ONLY, 'PP' Field in Flags
 
-  m_DCIDLength (0),
-  m_connectionId (0), // = DCID
+      m_version(0), // LONG HEADER ONLY
 
-  m_SCIDLength (0),
-  m_SCID (0), // LONG HEADER ONLY
+      m_DCIDLength(0),
+      m_connectionId(0), // = DCID
 
-  m_packetNumber (0),
-  m_c (false) // (Deprecated)(Short header에서만) DCID가 있는지 없는지
+      m_SCIDLength(0),
+      m_SCID(0), // LONG HEADER ONLY
+
+      m_packetNumber(0),
+      m_c(false) // (Deprecated)(Short header에서만) DCID가 있는지 없는지
 {
 }
 
-
-QuicHeader::~QuicHeader ()
+QuicHeader::~QuicHeader()
 {
 }
 
 std::string
-QuicHeader::TypeToString () const
+QuicHeader::TypeToString() const
 {
-  static const char* longTypeNames[6] = {
-    "Initial",
-    "0-RTT Protected",
-    "Handshake",
-    "Retry",
-    "Version Negotiation",
-    "None"
-  };
-  static const char* shortTypeNames[4] = {
-    "1 Octet",
-    "2 Octets",
-    "4 Octets"
-  };
+    static const char* longTypeNames[6] =
+        {"Initial", "0-RTT Protected", "Handshake", "Retry", "Version Negotiation", "None"};
+    static const char* shortTypeNames[4] = {"1 Octet", "2 Octets", "4 Octets"};
 
-  std::string typeDescription = "";
+    std::string typeDescription = "";
 
-  if (IsLong ())
+    if (IsLong())
     {
-      typeDescription.append (longTypeNames[m_type]);
+        typeDescription.append(longTypeNames[m_type]);
     }
-  else
+    else
     {
-      typeDescription.append (shortTypeNames[m_type]);
+        typeDescription.append(shortTypeNames[m_packetLength]);
     }
-  return typeDescription;
+    return typeDescription;
 }
 
 TypeId
-QuicHeader::GetTypeId (void)
+QuicHeader::GetTypeId(void)
 {
-  static TypeId tid = TypeId ("ns3::QuicHeader")
-    .SetParent<Header> ()
-    .SetGroupName ("Internet")
-    .AddConstructor<QuicHeader> ()
-  ;
-  return tid;
+    static TypeId tid = TypeId("ns3::QuicHeader")
+                            .SetParent<Header>()
+                            .SetGroupName("Internet")
+                            .AddConstructor<QuicHeader>();
+    return tid;
 }
 
 TypeId
-QuicHeader::GetInstanceTypeId (void) const
+QuicHeader::GetInstanceTypeId(void) const
 {
-  return GetTypeId ();
+    return GetTypeId();
 }
 
 uint32_t
-QuicHeader::GetSerializedSize (void) const
+QuicHeader::GetSerializedSize(void) const
 {
-  NS_ASSERT (m_type != NONE or m_form == SHORT);
+    NS_ASSERT(m_type != NONE or m_form == SHORT);
 
-  uint32_t serializesSize = CalculateHeaderLength ();
-  NS_LOG_INFO ("Serialized Size " << serializesSize);
+    uint32_t serializesSize = CalculateHeaderLength();
+    NS_LOG_INFO("Serialized Size " << serializesSize);
 
-  return serializesSize;
+    return serializesSize;
 }
 
 uint32_t
-QuicHeader::CalculateHeaderLength () const
+QuicHeader::CalculateHeaderLength() const
 {
-  uint32_t len;
+    uint32_t len;
 
-  if (IsLong ())
+    if (IsLong())
     {
-      len = 8 + 32 + 8 + 8 + GetConnectionIdLen() + GetSCIDLen(); // Flags + Version + DCID Length + SCID Length + DCID + SCID
+        len = 8 + 32 + 8 + 8 + GetDCIDLen() +
+              GetSCIDLen(); // Flags + Version + DCID Length + SCID Length + DCID + SCID
     }
-  else
+    else
     {
-      len = 8 + 160 * HasConnectionId () + GetPacketNumLen (); // Flags + DCID + Packet Number
-      // DCID 최대 길이 160비트
+        len = 8 + 160 * HasConnectionId() + GetPacketNumLen(); // Flags + DCID + Packet Number
+                                                               // DCID 최대 길이 160비트
 
-      // TODO: HasConnectionId 수정 (m_c 사용 X)
+        // TODO: HasConnectionId 수정 (m_c 사용 X)
     }
-  return len / 8;
+    return len / 8;
 }
 
 uint32_t
-QuicHeader::GetPacketNumLen () const
+QuicHeader::GetPacketNumLen() const
 {
-  if (IsLong ())
+    if (IsLong())
     {
-      return 32;
+        return 32;
     }
-  else
+    else
     {
-      switch (m_packetLength)
+        switch (m_packetLength)
         {
-        case ONE_OCTECT:
-          {
+        case ONE_OCTECT: {
             return 8;
             break;
-          }
-        case TWO_OCTECTS:
-          {
+        }
+        case TWO_OCTECTS: {
             return 16;
             break;
-          }
-        case FOUR_OCTECTS:
-          {
+        }
+        case FOUR_OCTECTS: {
             return 32;
             break;
-          }
+        }
         }
     }
-  NS_FATAL_ERROR ("Invalid conditions");
-  return 0;
+    NS_FATAL_ERROR("Invalid conditions");
+    return 0;
 }
 
 void
-QuicHeader::Serialize (Buffer::Iterator start) const
+QuicHeader::Serialize(Buffer::Iterator start) const
 {
-  NS_LOG_FUNCTION (this);
-  NS_ASSERT (m_type != NONE or m_form == SHORT); // Short Header
-  NS_LOG_INFO ("Serialize::Serialized Size " << CalculateHeaderLength ());
+    NS_LOG_FUNCTION(this);
+    NS_ASSERT(m_type != NONE or m_form == SHORT); // Short Header가 아닌데 NONE이면 에러
+    NS_LOG_INFO("Serialize::Serialized Size " << CalculateHeaderLength());
 
-  Buffer::Iterator i = start;
+    Buffer::Iterator i = start;
 
-  uint8_t t = (m_form << 7) + (m_fixed << 6);
+    uint8_t t = (m_form << 7) + (m_fixed << 6);
 
-  // F1......
+    // F1......
 
-  if (m_form) // LONG Header
+    if (m_form) // LONG Header
     {
-      t += (m_type << 4); // 11TTXXXX
-      i.WriteU8 (t);
-      i.WriteHtonU32 (m_version);
+        t += (m_type << 4); // 11TTXXXX
+        i.WriteU8(t);
+        i.WriteHtonU32(m_version);
 
-      i.WriteU8 (m_DCIDLength);
-      i.WriteHtonU64 (m_connectionId);
+        i.WriteU8(m_DCIDLength);
+        i.WriteHtonU64(m_connectionId); // TODO: 가변길이로 수정
 
-      i.WriteU8 (m_SCIDLength);
-      i.WriteHtonU64 (m_SCID);
+        i.WriteU8(m_SCIDLength);
+        i.WriteHtonU64(m_SCID);
 
-      if (!IsVersionNegotiation ())
+        if (!IsVersionNegotiation())
         {
-          i.WriteHtonU32 (m_packetNumber.GetValue ()); // Long header에서의 패킷 번호 필드는 ?
+            i.WriteHtonU32(m_packetNumber.GetValue()); // Long header에서의 패킷 번호 필드는 ?
         }
     }
-  else
+    else
     {
-      t += (m_s << 5) + (m_k << 2) + m_packetLength; // 01SRRKPP
-      i.WriteU8 (t);
+        t += (m_s << 5) + (m_k << 2) + m_packetLength; // 01SRRKPP
+        i.WriteU8(t);
 
-      if (HasConnectionId ())
+        if (HasConnectionId())
         {
-          i.WriteHtonU64 (m_connectionId); //Little endian -> Big endian
+            i.WriteHtonU64(m_connectionId); // Little endian -> Big endian
         }
 
-      switch (m_packetLength)
+        switch (m_packetLength)
         {
         case ONE_OCTECT:
-          i.WriteU8 ((uint8_t)m_packetNumber.GetValue ());
-          break;
+            i.WriteU8((uint8_t)m_packetNumber.GetValue());
+            break;
         case TWO_OCTECTS:
-          i.WriteHtonU16 ((uint16_t)m_packetNumber.GetValue ());
-          break;
+            i.WriteHtonU16((uint16_t)m_packetNumber.GetValue());
+            break;
         case FOUR_OCTECTS:
-          i.WriteHtonU32 ((uint32_t)m_packetNumber.GetValue ());
-          break;
+            i.WriteHtonU32((uint32_t)m_packetNumber.GetValue());
+            break;
         }
     }
 }
 
 uint32_t
-QuicHeader::Deserialize (Buffer::Iterator start)
+QuicHeader::Deserialize(Buffer::Iterator start)
 {
-  NS_LOG_FUNCTION (this);
+    NS_LOG_FUNCTION(this);
 
-  Buffer::Iterator i = start;
+    Buffer::Iterator i = start;
 
-  uint8_t t = i.ReadU8 ();
+    uint8_t t = i.ReadU8(); // flags
 
-  m_form = (t & 0x80) >> 7;
+    m_form = (t & 0x80) >> 7;
 
-  if (IsShort ())
+    if (IsShort())
     {
-      m_s = (t & 0x20) >> 5;
-      m_k = (t & 0x04) >> 2;
-      SetTypeByte (t & 0x1F); // ?
+        m_s = (t & 0x20) >> 5;
+        m_k = (t & 0x04) >> 2;
+        // SetTypeField (t & 0x1F); // 00011111 & 01SRRKPP
     }
-  else
+    else
     {
-      SetTypeByte (t & 0x7F);
+        SetTypeField((t & 0x30) >> 4); // 00110000 & 11TTXXXX -> m_type = 00TT0000
     }
-  NS_ASSERT (m_type != NONE or m_form == SHORT);
+    NS_ASSERT(m_type != NONE or m_form == SHORT);
 
-  if (HasConnectionId ())
+    if (HasConnectionId())
     {
-      SetConnectionID (i.ReadNtohU64 ()); // TODO
+        SetConnectionID(i.ReadNtohU64()); // TODO
     }
 
-  if (IsLong ())
+    if (IsLong())
     {
-      SetVersion (i.ReadNtohU32 ());
-      if (!IsVersionNegotiation ())
+        SetVersion(i.ReadNtohU32()); // Version Field 읽음
+        if (!IsVersionNegotiation())
         {
-          SetPacketNumber (SequenceNumber32 (i.ReadNtohU32 ()));
+            SetPacketNumber(SequenceNumber32(
+                i.ReadNtohU32())); // TODO: Long Heade에서의 Packet Number 필드 확인
         }
     }
-  else
+    else
     {
-      switch (m_type)
+        switch (m_packetLength)
         {
         case ONE_OCTECT:
-          SetPacketNumber (SequenceNumber32 (i.ReadU8 ()));
-          break;
+            SetPacketNumber(SequenceNumber32(i.ReadU8()));
+            break;
         case TWO_OCTECTS:
-          SetPacketNumber (SequenceNumber32 (i.ReadNtohU16 ()));
-          break;
+            SetPacketNumber(SequenceNumber32(i.ReadNtohU16()));
+            break;
         case FOUR_OCTECTS:
-          SetPacketNumber (SequenceNumber32 (i.ReadNtohU32 ()));
-          break;
+            SetPacketNumber(SequenceNumber32(i.ReadNtohU32()));
+            break;
         }
     }
 
-  NS_LOG_INFO ("Deserialize::Serialized Size " << CalculateHeaderLength ());
+    NS_LOG_INFO("Deserialize::Serialized Size " << CalculateHeaderLength());
 
-  return GetSerializedSize ();
+    return GetSerializedSize();
 }
 
 void
-QuicHeader::Print (std::ostream &os) const
+QuicHeader::Print(std::ostream& os) const
 {
-  NS_ASSERT (m_type != NONE or m_form == SHORT);
+    NS_ASSERT(m_type != NONE or m_form == SHORT);
 
-  os << "|" << m_form << "|";
+    os << "|" << m_form << "|";
 
-  if (IsShort ())
+    if (IsShort())
     {
-      os << m_c << "|" << m_k << "|" << "1|0|";
+        os << m_c << "|" << m_k << "|"
+           << "1|0|";
     }
 
-  os << TypeToString () << "|\n|";
+    os << TypeToString() << "|\n|";
 
-  if (HasConnectionId ())
+    if (HasConnectionId())
     {
-      os << "ConnectionID " << m_connectionId << "|\n|";
+        os << "ConnectionID " << m_connectionId << "|\n|";
     }
-  if (IsShort ())
+    if (IsShort())
     {
-      os << "PacketNumber " << m_packetNumber << "|\n";
+        os << "PacketNumber " << m_packetNumber << "|\n";
     }
-  else
+    else
     {
-      os << "Version " << (uint64_t)m_version << "|\n";
-      os << "PacketNumber " << m_packetNumber << "|\n|";
+        os << "Version " << (uint64_t)m_version << "|\n";
+        os << "PacketNumber " << m_packetNumber << "|\n|";
     }
-
 }
 
 QuicHeader
-QuicHeader::CreateInitial (uint64_t connectionId, uint32_t version, SequenceNumber32 packetNumber)
+QuicHeader::CreateInitial(uint64_t connectionId, uint32_t version, SequenceNumber32 packetNumber)
 {
-  NS_LOG_INFO ("Create Initial Helper called");
+    NS_LOG_INFO("Create Initial Helper called");
 
-  QuicHeader head;
-  head.SetFormat (QuicHeader::LONG);
-  head.SetTypeByte (QuicHeader::INITIAL);
-  head.SetConnectionID (connectionId);
-  head.SetVersion (version);
-  head.SetPacketNumber (packetNumber);
+    QuicHeader head;
+    head.SetFormat(QuicHeader::LONG);
+    head.SetTypeField(QuicHeader::INITIAL);
+    head.SetConnectionID(connectionId);
+    head.SetVersion(version);
+    head.SetPacketNumber(packetNumber);
 
-  return head;
-}
-
-
-QuicHeader
-QuicHeader::CreateRetry (uint64_t connectionId, uint32_t version, SequenceNumber32 packetNumber)
-{
-  NS_LOG_INFO ("Create Retry Helper called");
-
-  QuicHeader head;
-  head.SetFormat (QuicHeader::LONG);
-  head.SetTypeByte (QuicHeader::RETRY);
-  head.SetConnectionID (connectionId);
-  head.SetVersion (version);
-  head.SetPacketNumber (packetNumber);
-
-  return head;
+    return head;
 }
 
 QuicHeader
-QuicHeader::CreateHandshake (uint64_t connectionId, uint32_t version, SequenceNumber32 packetNumber)
+QuicHeader::CreateRetry(uint64_t connectionId, uint32_t version, SequenceNumber32 packetNumber)
 {
-  NS_LOG_INFO ("Create Handshake Helper called ");
+    NS_LOG_INFO("Create Retry Helper called");
 
-  QuicHeader head;
-  head.SetFormat (QuicHeader::LONG);
-  head.SetTypeByte (QuicHeader::HANDSHAKE);
-  head.SetConnectionID (connectionId);
-  head.SetVersion (version);
-  head.SetPacketNumber (packetNumber);
+    QuicHeader head;
+    head.SetFormat(QuicHeader::LONG);
+    head.SetTypeField(QuicHeader::RETRY);
+    head.SetConnectionID(connectionId);
+    head.SetVersion(version);
+    head.SetPacketNumber(packetNumber);
 
-  return head;
+    return head;
 }
 
 QuicHeader
-QuicHeader::Create0RTT (uint64_t connectionId, uint32_t version, SequenceNumber32 packetNumber)
+QuicHeader::CreateHandshake(uint64_t connectionId, uint32_t version, SequenceNumber32 packetNumber)
 {
-  NS_LOG_INFO ("Create 0RTT Helper called");
+    NS_LOG_INFO("Create Handshake Helper called ");
 
-  QuicHeader head;
-  head.SetFormat (QuicHeader::LONG);
-  head.SetTypeByte (QuicHeader::ZRTT_PROTECTED);
-  head.SetConnectionID (connectionId);
-  head.SetVersion (version);
-  head.SetPacketNumber (packetNumber);
+    QuicHeader head;
+    head.SetFormat(QuicHeader::LONG);
+    head.SetTypeField(QuicHeader::HANDSHAKE);
+    head.SetConnectionID(connectionId);
+    head.SetVersion(version);
+    head.SetPacketNumber(packetNumber);
 
-  return head;
+    return head;
 }
 
 QuicHeader
-QuicHeader::CreateShort (uint64_t connectionId, SequenceNumber32 packetNumber, bool connectionIdFlag, bool keyPhaseBit)
+QuicHeader::Create0RTT(uint64_t connectionId, uint32_t version, SequenceNumber32 packetNumber)
 {
-  NS_LOG_INFO ("Create Short Helper called");
+    NS_LOG_INFO("Create 0RTT Helper called");
 
-  QuicHeader head;
-  head.SetFormat (QuicHeader::SHORT);
-  head.SetKeyPhaseBit (keyPhaseBit);
-  head.SetPacketNumber (packetNumber);
+    QuicHeader head;
+    head.SetFormat(QuicHeader::LONG);
+    head.SetTypeField(QuicHeader::ZRTT_PROTECTED);
+    head.SetConnectionID(connectionId);
+    head.SetVersion(version);
+    head.SetPacketNumber(packetNumber);
 
-  if (connectionIdFlag)
+    return head;
+}
+
+QuicHeader
+QuicHeader::CreateShort(uint64_t connectionId,
+                        SequenceNumber32 packetNumber,
+                        bool connectionIdFlag,
+                        bool keyPhaseBit)
+{
+    NS_LOG_INFO("Create Short Helper called");
+
+    QuicHeader head;
+    head.SetFormat(QuicHeader::SHORT);
+    head.SetKeyPhaseBit(keyPhaseBit);
+    head.SetPacketNumber(packetNumber);
+
+    if (connectionIdFlag)
     {
-      head.SetConnectionID (connectionId);
+        head.SetConnectionID(connectionId);
     }
 
-  return head;
+    return head;
 }
 
 QuicHeader
-QuicHeader::CreateVersionNegotiation (uint64_t connectionId, uint32_t version, std::vector<uint32_t>& supportedVersions)
+QuicHeader::CreateVersionNegotiation(uint64_t connectionId,
+                                     uint32_t version,
+                                     std::vector<uint32_t>& supportedVersions)
 {
-  NS_LOG_INFO ("Create Version Negotiation Helper called");
+    NS_LOG_INFO("Create Version Negotiation Helper called");
 
-  QuicHeader head;
-  head.SetFormat (QuicHeader::LONG);
-  head.SetTypeByte (QuicHeader::VERSION_NEGOTIATION);
-  head.SetConnectionID (connectionId);
-  head.SetVersion (version);
+    QuicHeader head;
+    head.SetFormat(QuicHeader::LONG);
+    // head.SetTypeField (QuicHeader::VERSION_NEGOTIATION);
+    head.SetConnectionID(connectionId);
+    head.SetVersion(0);
 
-//	TODO: SetVersions(m)
-//	head.SetVersions(m_supportedVersions);
-//
-//   uint8_t *buffer = new uint8_t[4 * m_supportedVersions.size()];
-//
-//    for (uint8_t i = 0; i < (uint8_t) m_supportedVersions.size(); i++) {
-//
-//	    buffer[4*i] = (m_supportedVersions[i]) ;
-//	    buffer[4*i+1] = (m_supportedVersions[i] >> 8);
-//	    buffer[4*i+2] = (m_supportedVersions[i] >> 16);
-//	    buffer[4*i+3] = (m_supportedVersions[i] >> 24);
-//
-//    }
-//
-//    Ptr<Packet> payload = Create<Packet> (buffer, 4 * m_supportedVersions.size());
+    //	TODO: SetVersions(m)
+    //	head.SetVersions(m_supportedVersions);
+    //
+    //   uint8_t *buffer = new uint8_t[4 * m_supportedVersions.size()];
+    //
+    //    for (uint8_t i = 0; i < (uint8_t) m_supportedVersions.size(); i++) {
+    //
+    //	    buffer[4*i] = (m_supportedVersions[i]) ;
+    //	    buffer[4*i+1] = (m_supportedVersions[i] >> 8);
+    //	    buffer[4*i+2] = (m_supportedVersions[i] >> 16);
+    //	    buffer[4*i+3] = (m_supportedVersions[i] >> 24);
+    //
+    //    }
+    //
+    //    Ptr<Packet> payload = Create<Packet> (buffer, 4 * m_supportedVersions.size());
 
-  return head;
+    return head;
 }
 
 uint8_t
-QuicHeader::GetTypeByte () const
+QuicHeader::GetTypeByte() const
 {
-  return m_type;
+    return m_type;
 }
 
 void
-QuicHeader::SetTypeByte (uint8_t typeByte)
+QuicHeader::SetTypeField(uint8_t typeByte)
 {
-  m_type = typeByte;
+    m_type = typeByte;
+}
+
+void
+QuicHeader::SetPacketLength(uint8_t packetLength)
+{
+    m_packetLength = packetLength;
 }
 
 uint8_t
-QuicHeader::GetFormat () const
+QuicHeader::GetFormat() const
 {
-  return m_form;
+    return m_form;
 }
 
 void
-QuicHeader::SetFormat (bool form)
+QuicHeader::SetFormat(bool form)
 {
-  m_form = form;
+    m_form = form;
+}
+
+uint8_t
+QuicHeader::GetDCIDLen() const
+{
+    return m_DCIDLength;
+}
+
+uint8_t
+QuicHeader::GetSCIDLen() const
+{
+    return m_SCIDLength;
 }
 
 uint64_t
-QuicHeader::GetConnectionId () const
+QuicHeader::GetConnectionId() const
 {
-  NS_ASSERT (HasConnectionId ());
-  return m_connectionId;
+    NS_ASSERT(HasConnectionId());
+    return m_connectionId;
 }
 
 void
-QuicHeader::SetConnectionID (uint64_t connID)
+QuicHeader::SetConnectionID(uint64_t connID)
 {
-  m_connectionId = connID;
-  if (IsShort ())
+    m_connectionId = connID;
+    if (IsShort())
     {
-      m_c = true;
+        m_c = true;
     }
 }
 
 SequenceNumber32
-QuicHeader::GetPacketNumber () const
+QuicHeader::GetPacketNumber() const
 {
-  return m_packetNumber;
+    return m_packetNumber;
 }
 
 void
-QuicHeader::SetPacketNumber (SequenceNumber32 packNum)
+QuicHeader::SetPacketNumber(SequenceNumber32 packNum)
 {
-  NS_LOG_INFO (packNum);
-  m_packetNumber = packNum;
-  if (IsShort ())
+    NS_LOG_INFO(packNum);
+    m_packetNumber = packNum;
+    if (IsShort())
     {
-      if (packNum.GetValue () < 256)
+        if (packNum.GetValue() < 256)
         {
-          SetTypeByte (ONE_OCTECT);
+            SetPacketLength(ONE_OCTECT);
         }
-      else if (packNum.GetValue () < 65536)
+        else if (packNum.GetValue() < 65536)
         {
-          SetTypeByte (TWO_OCTECTS);
+            SetPacketLength(TWO_OCTECTS);
         }
-      else
+        else
         {
-          SetTypeByte (FOUR_OCTECTS);
+            SetPacketLength(FOUR_OCTECTS);
         }
     }
 }
 
 uint32_t
-QuicHeader::GetVersion () const
+QuicHeader::GetVersion() const
 {
-  NS_ASSERT (HasVersion ());
-  return m_version;
+    NS_ASSERT(HasVersion());
+    return m_version;
 }
 
 void
-QuicHeader::SetVersion (uint32_t version)
+QuicHeader::SetVersion(uint32_t version)
 {
-  NS_ASSERT (HasVersion ());
-  m_version = version;
+    NS_ASSERT(HasVersion());
+    m_version = version;
 }
 
 bool
-QuicHeader::GetKeyPhaseBit () const
+QuicHeader::GetKeyPhaseBit() const
 {
-  NS_ASSERT (IsShort ());
-  return m_k;
+    NS_ASSERT(IsShort());
+    return m_k;
 }
 
 void
-QuicHeader::SetKeyPhaseBit (bool keyPhaseBit)
+QuicHeader::SetKeyPhaseBit(bool keyPhaseBit)
 {
-  NS_ASSERT (IsShort ());
-  m_k = keyPhaseBit;
-}
-
-bool QuicHeader::IsShort () const
-{
-  return m_form == SHORT;
+    NS_ASSERT(IsShort());
+    m_k = keyPhaseBit;
 }
 
 bool
-QuicHeader::IsVersionNegotiation () const
+QuicHeader::IsShort() const
 {
-  return m_type == VERSION_NEGOTIATION;
+    return m_form == SHORT;
 }
 
 bool
-QuicHeader::IsInitial () const
+QuicHeader::IsVersionNegotiation() const
 {
-  return m_type == INITIAL;
+    return m_version == 0;
 }
 
 bool
-QuicHeader::IsRetry () const
+QuicHeader::IsInitial() const
 {
-  return m_type == RETRY;
+    return m_type == INITIAL;
 }
 
 bool
-QuicHeader::IsHandshake () const
+QuicHeader::IsRetry() const
 {
-  return m_type == HANDSHAKE;
+    return m_type == RETRY;
 }
 
 bool
-QuicHeader::IsORTT () const
+QuicHeader::IsHandshake() const
 {
-  return m_type == ZRTT_PROTECTED;
-}
-
-bool QuicHeader::HasVersion () const
-{
-  return IsLong ();
-}
-
-bool QuicHeader::HasConnectionId () const
-{
-  return not (IsShort () and m_c == false);
+    return m_type == HANDSHAKE;
 }
 
 bool
-operator== (const QuicHeader &lhs, const QuicHeader &rhs)
+QuicHeader::IsORTT() const
 {
-  return (
-    lhs.m_form == rhs.m_form
-    && lhs.m_c == rhs.m_c
-    && lhs.m_k  == rhs.m_k
-    && lhs.m_type == rhs.m_type
-    && lhs.m_connectionId == rhs.m_connectionId
-    && lhs.m_packetNumber == rhs.m_packetNumber
-    && lhs.m_version == rhs.m_version
-    );
+    return m_type == ZRTT_PROTECTED;
+}
+
+bool
+QuicHeader::HasVersion() const
+{
+    return IsLong();
+}
+
+bool
+QuicHeader::HasConnectionId() const
+{
+    return not(IsShort() and m_c == false);
+}
+
+bool
+operator==(const QuicHeader& lhs, const QuicHeader& rhs)
+{
+    if (lhs.m_form == rhs.m_form)
+    {
+        if (lhs.m_form)
+        {
+            return (
+                    // && lhs.m_c == rhs.m_c
+                    lhs.m_type == rhs.m_type &&
+                    lhs.m_version == rhs.m_version &&
+                    lhs.m_DCIDLength == rhs.m_DCIDLength &&
+                    lhs.m_connectionId == rhs.m_connectionId &&
+                    lhs.m_SCIDLength == rhs.m_SCIDLength &&
+                    lhs.m_SCID == rhs.m_SCID &&
+                    lhs.m_packetNumber == rhs.m_packetNumber); // TODO: Long header에서의 Packet Number
+        }
+        else {
+          return (lhs.m_s == rhs.m_s
+          && lhs.m_k == rhs.m_k
+          && lhs.m_packetLength == rhs.m_packetLength
+          && lhs.m_connectionId == rhs.m_connectionId
+          && lhs.m_packetNumber == rhs.m_packetNumber
+          );
+        }
+    }
+    else return false;
 }
 
 std::ostream&
-operator<< (std::ostream& os, QuicHeader& tc)
+operator<<(std::ostream& os, QuicHeader& tc)
 {
-  tc.Print (os);
-  return os;
+    tc.Print(os);
+    return os;
 }
 
 } // namespace ns3
-
