@@ -232,11 +232,11 @@ QuicHeader::Deserialize(Buffer::Iterator start)
     {
         m_s = (t & 0x20) >> 5;
         m_k = (t & 0x04) >> 2;
-        // SetTypeField (t & 0x1F); // 00011111 & 01SRRKPP
+        // SetType (t & 0x1F); // 00011111 & 01SRRKPP
     }
     else
     {
-        SetTypeField((t & 0x30) >> 4); // 00110000 & 11TTXXXX -> m_type = 00TT0000
+        SetType((t & 0x30) >> 4); // 00110000 & 11TTXXXX -> m_type = 00TT0000
     }
     NS_ASSERT(m_type != NONE or m_form == SHORT);
 
@@ -312,7 +312,7 @@ QuicHeader::CreateInitial(uint64_t connectionId, uint32_t version, SequenceNumbe
 
     QuicHeader head;
     head.SetFormat(QuicHeader::LONG);
-    head.SetTypeField(QuicHeader::INITIAL);
+    head.SetType(QuicHeader::INITIAL);
     head.SetConnectionID(connectionId);
     head.SetVersion(version);
     head.SetPacketNumber(packetNumber);
@@ -327,7 +327,7 @@ QuicHeader::CreateRetry(uint64_t connectionId, uint32_t version, SequenceNumber3
 
     QuicHeader head;
     head.SetFormat(QuicHeader::LONG);
-    head.SetTypeField(QuicHeader::RETRY);
+    head.SetType(QuicHeader::RETRY);
     head.SetConnectionID(connectionId);
     head.SetVersion(version);
     head.SetPacketNumber(packetNumber);
@@ -342,7 +342,7 @@ QuicHeader::CreateHandshake(uint64_t connectionId, uint32_t version, SequenceNum
 
     QuicHeader head;
     head.SetFormat(QuicHeader::LONG);
-    head.SetTypeField(QuicHeader::HANDSHAKE);
+    head.SetType(QuicHeader::HANDSHAKE);
     head.SetConnectionID(connectionId);
     head.SetVersion(version);
     head.SetPacketNumber(packetNumber);
@@ -357,7 +357,7 @@ QuicHeader::Create0RTT(uint64_t connectionId, uint32_t version, SequenceNumber32
 
     QuicHeader head;
     head.SetFormat(QuicHeader::LONG);
-    head.SetTypeField(QuicHeader::ZRTT_PROTECTED);
+    head.SetType(QuicHeader::ZRTT_PROTECTED);
     head.SetConnectionID(connectionId);
     head.SetVersion(version);
     head.SetPacketNumber(packetNumber);
@@ -369,12 +369,14 @@ QuicHeader
 QuicHeader::CreateShort(uint64_t connectionId,
                         SequenceNumber32 packetNumber,
                         bool connectionIdFlag,
-                        bool keyPhaseBit)
+                        bool keyPhaseBit,
+                        bool spinBit)
 {
     NS_LOG_INFO("Create Short Helper called");
 
     QuicHeader head;
     head.SetFormat(QuicHeader::SHORT);
+    head.SetSpinBit(spinBit);
     head.SetKeyPhaseBit(keyPhaseBit);
     head.SetPacketNumber(packetNumber);
 
@@ -395,7 +397,7 @@ QuicHeader::CreateVersionNegotiation(uint64_t connectionId,
 
     QuicHeader head;
     head.SetFormat(QuicHeader::LONG);
-    // head.SetTypeField (QuicHeader::VERSION_NEGOTIATION);
+    // head.SetType (QuicHeader::VERSION_NEGOTIATION);
     head.SetConnectionID(connectionId);
     head.SetVersion(0);
 
@@ -425,7 +427,7 @@ QuicHeader::GetTypeByte() const
 }
 
 void
-QuicHeader::SetTypeField(uint8_t typeByte)
+QuicHeader::SetType(uint8_t typeByte)
 {
     m_type = typeByte;
 }
@@ -524,6 +526,27 @@ QuicHeader::GetKeyPhaseBit() const
 {
     NS_ASSERT(IsShort());
     return m_k;
+}
+
+bool
+QuicHeader::GetSpinBit() const
+{
+    NS_ASSERT(IsShort());
+    return m_s;
+}
+
+void
+QuicHeader::SetSpinBit(bool spinBit)
+{
+    NS_ASSERT(IsShort());
+    m_s = spinBit;
+}
+
+void
+QuicHeader::SetKeyPhaseBit(bool keyPhaseBit)
+{
+    NS_ASSERT(IsShort());
+    m_k = keyPhaseBit;
 }
 
 void

@@ -183,7 +183,7 @@ public:
    * \param keyPhaseBit the key phase, which allows a recipient of a packet to identify the packet protection keys that are used to protect the packet.
    * \return the generated QuicHeader
    */
-  static QuicHeader CreateShort (uint64_t connectionId, SequenceNumber32 packetNumber, bool connectionIdFlag = true, bool keyPhaseBit = QuicHeader::PHASE_ZERO);
+  static QuicHeader CreateShort (uint64_t connectionId, SequenceNumber32 packetNumber, bool connectionIdFlag = true, bool keyPhaseBit = QuicHeader::PHASE_ZERO, bool spinBit = QuicHeader::SPIN_ZERO);
 
   // Getters, Setters and Controls
 
@@ -197,7 +197,7 @@ public:
    * \brief Set the type byte
    * \param typeByte the type byte for this QuicHeader
    */
-  void SetTypeField (uint8_t typeByte);
+  void SetType (uint8_t typeByte);
 
   /**
    * \brief Set the packet length
@@ -274,6 +274,18 @@ public:
    * \param keyPhaseBit the key phase bit for this QuicHeader
    */
   void SetKeyPhaseBit (bool keyPhaseBit);
+
+  /**
+   * \brief Get the spin bit
+   * \param spinBit the spin bit for this QuicHeader
+   */
+  bool GetSpinBit () const;
+
+  /**
+   * \brief Set the spin bit
+   * \param spinBit the spin bit for this QuicHeader
+   */
+  void SetSpinBit (bool spinBit);
 
   /**
    * \brief Get the form bit
