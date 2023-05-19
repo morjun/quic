@@ -125,10 +125,9 @@ QuicHeader::CalculateHeaderLength() const
     }
     else
     {
-        len = 8 + 160 * HasConnectionId() + GetPacketNumLen(); // Flags + DCID + Packet Number
+        len = 8 + GetDCIDLen() + GetPacketNumLen(); // Flags + DCID + Packet Number
                                                                // DCID 최대 길이 160비트
 
-        // TODO: HasConnectionId 수정 (m_c 사용 X)
     }
     return len / 8;
 }
@@ -453,7 +452,11 @@ QuicHeader::SetFormat(bool form)
 uint8_t
 QuicHeader::GetDCIDLen() const
 {
-    return m_DCIDLength;
+    if (IsShort()) {
+        return sizeof(m_connectionId)*8;
+    }
+    else
+        return m_DCIDLength;
 }
 
 uint8_t
@@ -473,10 +476,10 @@ void
 QuicHeader::SetConnectionID(uint64_t connID)
 {
     m_connectionId = connID;
-    if (IsShort())
-    {
-        m_c = true;
-    }
+    // if (IsShort())
+    // {
+    //     m_c = true;
+    // }
 }
 
 SequenceNumber32
@@ -601,7 +604,7 @@ QuicHeader::HasVersion() const
 bool
 QuicHeader::HasConnectionId() const
 {
-    return not(IsShort() and m_c == false);
+    return not(IsShort() and GetDCIDLen() == 0);
 }
 
 bool
@@ -609,7 +612,7 @@ operator==(const QuicHeader& lhs, const QuicHeader& rhs)
 {
     if (lhs.m_form == rhs.m_form)
     {
-        if (lhs.m_form)
+        if (lhs.IsLong())
         {
             return (
                     // && lhs.m_c == rhs.m_c
