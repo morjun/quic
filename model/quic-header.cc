@@ -552,13 +552,6 @@ QuicHeader::SetKeyPhaseBit(bool keyPhaseBit)
     m_k = keyPhaseBit;
 }
 
-void
-QuicHeader::SetKeyPhaseBit(bool keyPhaseBit)
-{
-    NS_ASSERT(IsShort());
-    m_k = keyPhaseBit;
-}
-
 bool
 QuicHeader::IsShort() const
 {
