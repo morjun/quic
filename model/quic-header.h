@@ -201,9 +201,9 @@ public:
 
   /**
    * \brief Set the packet length
-   * \param packetLength the packet length for this QuicHeader
+   * \param packetNumLength the packet length for this QuicHeader
    */
-  void SetPacketLength (uint8_t packetLength);
+  void SetPacketNumLength (uint8_t packetNumLength);
 
   /**
    * \brief Get the DCID Length
@@ -385,7 +385,7 @@ private:
 
   bool m_c;                         //!< Connection id flag
 
-  uint8_t m_packetLength;          //!< Packet length
+  uint8_t m_packetNumLength;          //!< Packet number length
 
   uint8_t m_DCIDLength;             //!< Source Connection Id Length
   uint64_t m_connectionId;          //!< Connection Id

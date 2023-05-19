@@ -47,7 +47,7 @@ QuicHeader::QuicHeader()
       m_s(SPIN_ZERO),  // SHORT HEADER ONLY
       m_k(PHASE_ZERO), // SHORT HEADER ONLY
 
-      m_packetLength(0), // SHORT HEADER ONLY, 'PP' Field in Flags
+      m_packetNumLength(0), // SHORT HEADER ONLY, 'PP' Field in Flags
 
       m_version(0), // LONG HEADER ONLY
 
@@ -81,7 +81,7 @@ QuicHeader::TypeToString() const
     }
     else
     {
-        typeDescription.append(shortTypeNames[m_packetLength]);
+        typeDescription.append(shortTypeNames[m_packetNumLength]);
     }
     return typeDescription;
 }
@@ -141,7 +141,7 @@ QuicHeader::GetPacketNumLen() const
     }
     else
     {
-        switch (m_packetLength)
+        switch (m_packetNumLength)
         {
         case ONE_OCTECT: {
             return 8;
@@ -193,7 +193,7 @@ QuicHeader::Serialize(Buffer::Iterator start) const
     }
     else
     {
-        t += (m_s << 5) + (m_k << 2) + m_packetLength; // 01SRRKPP
+        t += (m_s << 5) + (m_k << 2) + m_packetNumLength; // 01SRRKPP
         i.WriteU8(t);
 
         if (HasConnectionId())
@@ -201,7 +201,7 @@ QuicHeader::Serialize(Buffer::Iterator start) const
             i.WriteHtonU64(m_connectionId); // Little endian -> Big endian
         }
 
-        switch (m_packetLength)
+        switch (m_packetNumLength)
         {
         case ONE_OCTECT:
             i.WriteU8((uint8_t)m_packetNumber.GetValue());
@@ -255,7 +255,7 @@ QuicHeader::Deserialize(Buffer::Iterator start)
     }
     else
     {
-        switch (m_packetLength)
+        switch (m_packetNumLength)
         {
         case ONE_OCTECT:
             SetPacketNumber(SequenceNumber32(i.ReadU8()));
@@ -432,9 +432,9 @@ QuicHeader::SetType(uint8_t typeByte)
 }
 
 void
-QuicHeader::SetPacketLength(uint8_t packetLength)
+QuicHeader::SetPacketNumLength(uint8_t packetNumLength)
 {
-    m_packetLength = packetLength;
+    m_packetNumLength = packetNumLength;
 }
 
 uint8_t
@@ -497,15 +497,15 @@ QuicHeader::SetPacketNumber(SequenceNumber32 packNum)
     {
         if (packNum.GetValue() < 256)
         {
-            SetPacketLength(ONE_OCTECT);
+            SetPacketNumLength(ONE_OCTECT);
         }
         else if (packNum.GetValue() < 65536)
         {
-            SetPacketLength(TWO_OCTECTS);
+            SetPacketNumLength(TWO_OCTECTS);
         }
         else
         {
-            SetPacketLength(FOUR_OCTECTS);
+            SetPacketNumLength(FOUR_OCTECTS);
         }
     }
 }
@@ -627,7 +627,7 @@ operator==(const QuicHeader& lhs, const QuicHeader& rhs)
         else {
           return (lhs.m_s == rhs.m_s
           && lhs.m_k == rhs.m_k
-          && lhs.m_packetLength == rhs.m_packetLength
+          && lhs.m_packetNumLength == rhs.m_packetNumLength
           && lhs.m_connectionId == rhs.m_connectionId
           && lhs.m_packetNumber == rhs.m_packetNumber
           );
