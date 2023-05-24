@@ -451,6 +451,7 @@ QuicSocketBase::QuicSocketBase (void)
     m_connectionId (0),
     m_vers (
       QUIC_VERSION_NS3_IMPL),
+    m_spinBit (QuicHeader::SPIN_ZERO),
     m_keyPhase (QuicHeader::PHASE_ZERO),
     m_lastReceived (Seconds (0.0)),
     m_initial_max_stream_data (
@@ -548,6 +549,7 @@ QuicSocketBase::QuicSocketBase (const QuicSocketBase& sock)   // Copy constructo
     m_connected (sock.m_connected),
     m_connectionId (0),
     m_vers (sock.m_vers),
+    m_spinBit (QuicHeader::SPIN_ZERO),
     m_keyPhase (QuicHeader::PHASE_ZERO),
     m_lastReceived (sock.m_lastReceived),
     m_initial_max_stream_data (sock.m_initial_max_stream_data),
@@ -1218,7 +1220,7 @@ QuicSocketBase::SendAck ()
   QuicHeader head;
 
   head = QuicHeader::CreateShort (m_connectionId, packetNumber,
-                                  !m_omit_connection_id, m_keyPhase);
+                                  !m_omit_connection_id, m_keyPhase, m_spinBit);
 
   // if (m_socketState == CONNECTING_SVR)
   //   {
@@ -1369,7 +1371,7 @@ QuicSocketBase::SendDataPacket (SequenceNumber32 packetNumber,
       else
         {
           head = QuicHeader::CreateShort (m_connectionId, packetNumber,
-                                          !m_omit_connection_id, m_keyPhase);
+                                          !m_omit_connection_id, m_keyPhase, m_spinBit);
         }
     }
   else
@@ -1754,7 +1756,7 @@ QuicSocketBase::SendConnectionClosePacket (uint16_t errorCode, std::string phras
   QuicHeader head;
 
   head = QuicHeader::CreateShort (m_connectionId, packetNumber,
-                                  !m_omit_connection_id, m_keyPhase);
+                                  !m_omit_connection_id, m_keyPhase, m_spinBit);
 
 
   NS_LOG_DEBUG ("Send Connection Close packet with header " << head);
@@ -2774,8 +2776,16 @@ QuicSocketBase::ReceivedData (Ptr<Packet> p, const QuicHeader& quicHeader,
       // we need to check if the packet contains only an ACK frame
       // in this case we cannot explicitely ACK it!
       // check if delayed ACK is used
+
       m_receivedPacketNumbers.push_back (quicHeader.GetPacketNumber ());
       onlyAckFrames = m_quicl5->DispatchRecv (p, address);
+
+      if (m_quicl4->IsServer ()) {
+          m_spinBit = quicHeader.GetSpinBit() == QuicHeader::SPIN_ONE ? QuicHeader::SPIN_ONE : QuicHeader::SPIN_ZERO;
+      }
+      else {
+          quicHeader.GetSpinBit() == QuicHeader::SPIN_ZERO ? m_spinBit = QuicHeader::SPIN_ONE : m_spinBit = QuicHeader::SPIN_ZERO; //spin
+      }
 
     }
   else if (m_socketState == CLOSING)
@@ -2897,19 +2907,23 @@ QuicSocketBase::AbortConnection (uint16_t transportErrorCode,
                                                   m_tcb->m_nextTxSequence++);
         break;
       case OPEN:
-        quicHeader =
-          !m_connected ?
-          QuicHeader::CreateHandshake (m_connectionId, m_vers,
-                                       m_tcb->m_nextTxSequence++) :
-          QuicHeader::CreateShort (m_connectionId,
-                                   m_tcb->m_nextTxSequence++,
-                                   !m_omit_connection_id, m_keyPhase);
+        if (!m_connected) {
+          quicHeader =
+              QuicHeader::CreateHandshake(m_connectionId, m_vers, m_tcb->m_nextTxSequence++);
+        }
+        else {
+          quicHeader = QuicHeader::CreateShort(m_connectionId,
+                                               m_tcb->m_nextTxSequence++,
+                                               !m_omit_connection_id,
+                                               m_keyPhase,
+                                               m_spinBit);
+        }
         break;
       case CLOSING:
         quicHeader = QuicHeader::CreateShort (m_connectionId,
                                               m_tcb->m_nextTxSequence++,
                                               !m_omit_connection_id,
-                                              m_keyPhase);
+                                              m_keyPhase, m_spinBit);
         break;
       default:
         NS_ABORT_MSG (
