@@ -2786,6 +2786,7 @@ QuicSocketBase::ReceivedData (Ptr<Packet> p, const QuicHeader& quicHeader,
       else {
           quicHeader.GetSpinBit() == QuicHeader::SPIN_ZERO ? m_spinBit = QuicHeader::SPIN_ONE : m_spinBit = QuicHeader::SPIN_ZERO; //spin
       }
+      NS_LOG_INFO ("Set spin bit to " << m_spinBit);
 
     }
   else if (m_socketState == CLOSING)
