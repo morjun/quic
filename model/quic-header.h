@@ -68,6 +68,15 @@ public:
   } TypeLong_t;
 
   /**
+   * \brief Quic header spin bit values
+   */
+  typedef enum
+  {
+    SPIN_ZERO = 0,  //!< Phase 0
+    SPIN_ONE  = 1   //!< Phase 1
+  } SpinBit_t;
+
+  /**
    * \brief Quic header key phase bit values
    */
   typedef enum
@@ -172,7 +181,7 @@ public:
    * \param keyPhaseBit the key phase, which allows a recipient of a packet to identify the packet protection keys that are used to protect the packet.
    * \return the generated QuicHeader
    */
-  static QuicHeader CreateShort (uint64_t connectionId, SequenceNumber32 packetNumber, bool connectionIdFlag = true, bool keyPhaseBit = QuicHeader::PHASE_ZERO);
+  static QuicHeader CreateShort (uint64_t connectionId, SequenceNumber32 packetNumber, bool connectionIdFlag = true, bool keyPhaseBit = QuicHeader::PHASE_ZERO, bool spinBit = QuicHeader::SPIN_ZERO);
 
   // Getters, Setters and Controls
 
@@ -233,6 +242,18 @@ public:
    * \param version the version for this QuicHeader
    */
   void SetVersion (uint32_t version);
+
+  /**
+   * \brief Get the spin bit
+   * \return The spin bit for this QuicHeader
+   */
+  bool GetSpinBit () const;
+
+  /**
+   * \brief Set the spin bit
+   * \param spinBit the spin bit for this QuicHeader
+   */
+  void SetSpinBit (bool spinBit);
 
   /**
    * \brief Get the key phase bit
@@ -336,6 +357,7 @@ private:
 
   bool m_form;                      //!< Form bit
   bool m_c;                         //!< Connection id flag
+  bool m_s;                         //!< Spin bit
   bool m_k;                         //!< Key phase bit
   uint8_t m_type;                   //!< Type byte
   uint64_t m_connectionId;          //!< Connection Id

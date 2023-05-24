@@ -38,8 +38,9 @@ NS_OBJECT_ENSURE_REGISTERED (QuicHeader);
 QuicHeader::QuicHeader ()
   : m_form (SHORT),
   m_c (false),
+  m_s (SPIN_ZERO),
   m_k (PHASE_ZERO),
-  m_type (0),
+  m_type (0), // long에서 3비트만 사용
   m_connectionId (0),
   m_packetNumber (0),
   m_version (0)
@@ -166,7 +167,7 @@ QuicHeader::Serialize (Buffer::Iterator start) const
 
   Buffer::Iterator i = start;
 
-  uint8_t t = m_type + (m_form << 7);
+  uint8_t t = m_type + (m_form << 7); // FTTT TTTT
 
   if (m_form)
     {
@@ -180,7 +181,7 @@ QuicHeader::Serialize (Buffer::Iterator start) const
     }
   else
     {
-      t += (m_c << 6) + (m_k << 5);
+      t += (m_c << 6) + (m_k << 5) + (m_s << 4); // 0CKS TTTT
       i.WriteU8 (t);
 
       if (m_c)
@@ -218,7 +219,8 @@ QuicHeader::Deserialize (Buffer::Iterator start)
     {
       m_c = (t & 0x40) >> 6;
       m_k = (t & 0x20) >> 5;
-      SetTypeByte (t & 0x1F);
+      m_s = (t & 0x10) >> 4;
+      SetTypeByte (t & 0x0F); // 4비트만 사용
     }
   else
     {
@@ -352,13 +354,14 @@ QuicHeader::Create0RTT (uint64_t connectionId, uint32_t version, SequenceNumber3
 }
 
 QuicHeader
-QuicHeader::CreateShort (uint64_t connectionId, SequenceNumber32 packetNumber, bool connectionIdFlag, bool keyPhaseBit)
+QuicHeader::CreateShort (uint64_t connectionId, SequenceNumber32 packetNumber, bool connectionIdFlag, bool keyPhaseBit, bool spinBit)
 {
   NS_LOG_INFO ("Create Short Helper called");
 
   QuicHeader head;
   head.SetFormat (QuicHeader::SHORT);
   head.SetKeyPhaseBit (keyPhaseBit);
+  head.SetSpinBit (spinBit);
   head.SetPacketNumber (packetNumber);
 
   if (connectionIdFlag)
@@ -496,6 +499,20 @@ QuicHeader::SetKeyPhaseBit (bool keyPhaseBit)
   m_k = keyPhaseBit;
 }
 
+bool
+QuicHeader::GetSpinBit () const
+{
+  NS_ASSERT (IsShort ());
+  return m_s;
+}
+
+void
+QuicHeader::SetSpinBit (bool spinBit)
+{
+  NS_ASSERT (IsShort ());
+  m_s = spinBit;
+}
+
 bool QuicHeader::IsShort () const
 {
   return m_form == SHORT;
@@ -547,6 +564,7 @@ operator== (const QuicHeader &lhs, const QuicHeader &rhs)
   return (
     lhs.m_form == rhs.m_form
     && lhs.m_c == rhs.m_c
+    && lhs.m_s  == rhs.m_s
     && lhs.m_k  == rhs.m_k
     && lhs.m_type == rhs.m_type
     && lhs.m_connectionId == rhs.m_connectionId
