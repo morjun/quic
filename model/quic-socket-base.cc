@@ -2400,10 +2400,7 @@ QuicSocketBase::OnReceivedAckFrame (QuicSubheader &sub)
     }
 
   // try to send more data
-  if (SendPendingData (m_connected)) {
-    // Compute timers
-    SetReTxTimeout (); // 중복
-  }
+  SendPendingData (m_connected);
 }
 
 QuicTransportParameters
