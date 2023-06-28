@@ -51,7 +51,9 @@ namespace ns3 {
 /**
  * \ingroup internet
  *
- * \brief aggregate IP/TCP/UDP functionality to existing Nodes.
+ * \brief 
+ * 
+ * aggregate IP/TCP/UDP functionality to existing Nodes.
  *
  * This helper enables pcap and ascii tracing of events in the internet stack
  * associated with a node.  This is substantially similar to the tracing
@@ -83,6 +85,7 @@ class QuicHelper : public InternetStackHelper
 {
 public:
   /**
+   * InternetStackHelper의 Install()메소드에 ns3::Quic 클래스 인스턴스만 추가한 형태이다.
    * For each node in the input container, aggregate implementations of the
    * ns3::Ipv4, ns3::Ipv6, ns3::Udp, ns3::Quic, and ns3::Tcp classes.  The program will assert
    * if this method is called on a container with a node that already has

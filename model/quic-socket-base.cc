@@ -1407,7 +1407,7 @@ QuicSocketBase::SetReTxTimeout ()
   NS_LOG_FUNCTION (this);
 
   // Don't arm the alarm if there are no packets with retransmittable data in flight.
-  //if (numRetransmittablePacketsOutstanding == 0)
+  // if (numRetransmittablePacketsOutstanding == 0)
   if (false)
     {
       m_tcb->m_lossDetectionAlarm.Cancel ();
@@ -1465,8 +1465,9 @@ QuicSocketBase::SetReTxTimeout ()
     }
   NS_LOG_INFO ("Schedule ReTxTimeout at time " << Simulator::Now ().GetSeconds () << " to expire at time " << (Simulator::Now () + alarmDuration).GetSeconds ());
   NS_LOG_INFO ("Alarm after " << alarmDuration.GetSeconds () << " seconds");
+
   m_tcb->m_lossDetectionAlarm = Simulator::Schedule (alarmDuration,
-                                                     &QuicSocketBase::ReTxTimeout, this);
+                                                     &QuicSocketBase::ReTxTimeout, this); //Only one
   m_tcb->m_nextAlarmTrigger = Simulator::Now () + alarmDuration;
 }
 
@@ -2399,10 +2400,10 @@ QuicSocketBase::OnReceivedAckFrame (QuicSubheader &sub)
     }
 
   // try to send more data
-  SendPendingData (m_connected);
-
-  // Compute timers
-  SetReTxTimeout ();
+  if (SendPendingData (m_connected)) {
+    // Compute timers
+    SetReTxTimeout (); // 중복
+  }
 }
 
 QuicTransportParameters
@@ -2782,11 +2783,12 @@ QuicSocketBase::ReceivedData (Ptr<Packet> p, const QuicHeader& quicHeader,
 
       if (m_quicl4->IsServer ()) {
           m_spinBit = quicHeader.GetSpinBit() == QuicHeader::SPIN_ONE ? QuicHeader::SPIN_ONE : QuicHeader::SPIN_ZERO;
+          NS_LOG_INFO ("(Server) Set spin bit to " << m_spinBit);
       }
       else {
           quicHeader.GetSpinBit() == QuicHeader::SPIN_ZERO ? m_spinBit = QuicHeader::SPIN_ONE : m_spinBit = QuicHeader::SPIN_ZERO; //spin
+          NS_LOG_INFO ("(Client) Set spin bit to " << m_spinBit);
       }
-      NS_LOG_INFO ("Set spin bit to " << m_spinBit);
 
     }
   else if (m_socketState == CLOSING)

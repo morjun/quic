@@ -282,12 +282,13 @@ QuicHeader::Print (std::ostream &os) const
     }
   if (IsShort ())
     {
-      os << "PacketNumber " << m_packetNumber << "|\n";
+      os << "PacketNumber " << m_packetNumber << "|\n|";
+      os << "SpinBit " << m_s << "|\n";
     }
   else
     {
-      os << "Version " << (uint64_t)m_version << "|\n";
       os << "PacketNumber " << m_packetNumber << "|\n|";
+      os << "Version " << (uint64_t)m_version << "|\n";
     }
 
 }
@@ -368,6 +369,8 @@ QuicHeader::CreateShort (uint64_t connectionId, SequenceNumber32 packetNumber, b
     {
       head.SetConnectionID (connectionId);
     }
+
+  NS_LOG_INFO ("Spinbit: " << spinBit);
 
   return head;
 }

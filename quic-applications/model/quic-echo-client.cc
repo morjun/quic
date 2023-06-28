@@ -179,7 +179,7 @@ QuicEchoClient::StartApplication (void)
 
   m_socket->SetRecvCallback (MakeCallback (&QuicEchoClient::HandleRead, this));
   m_socket->SetAllowBroadcast (true);
-  ScheduleTransmit (Seconds (2.));
+  ScheduleTransmit (Seconds (2.)); // 켜지고 2초 후에 보냄
 }
 
 void
