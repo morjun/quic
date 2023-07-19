@@ -921,7 +921,7 @@ QuicSubheader::ReadVarInt64 (Buffer::Iterator& i)
   //NS_LOG_FUNCTION(this);
 
   uint8_t bytestream8 = i.ReadU8 ();
-  uint8_t mask = bytestream8 & 0b11000000;
+  uint8_t mask = bytestream8 & 0b11000000; //앞의 2비트가 length 표현
   bytestream8 &= 0b00111111;
 
   uint64_t bytestream64 = 0;
@@ -930,15 +930,15 @@ QuicSubheader::ReadVarInt64 (Buffer::Iterator& i)
     {
       bytestream64 = (uint64_t)bytestream8;
     }
-  else if (mask == 0x40)
+  else if (mask == 0x40) //2바이트 01000000
     {
       bytestream64 = ((uint64_t)bytestream8 << 8) | (uint64_t)i.ReadU8 ();
     }
-  else if (mask == 0x80)
+  else if (mask == 0x80) //4바이트 10000000
     {
       bytestream64 = ((uint64_t)bytestream8 << 24) | ((uint64_t)i.ReadU8 () << 16) | ((uint64_t)i.ReadU8 () << 8) | (uint64_t)i.ReadU8 ();
     }
-  else if (mask == 0xC0)
+  else if (mask == 0xC0) //8바이트 11000000
     {
       bytestream64 = ((uint64_t)bytestream8 << 56) | ((uint64_t)i.ReadU8 () << 48) | ((uint64_t)i.ReadU8 () << 40) | ((uint64_t)i.ReadU8 () << 32) | ((uint64_t)i.ReadU8 () << 24) | ((uint64_t)i.ReadU8 () << 16) | ((uint64_t)i.ReadU8 () << 8) | (uint64_t)i.ReadU8 ();
     }

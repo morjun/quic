@@ -1183,7 +1183,7 @@ QuicSocketBase::MaybeQueueAck ()
         {
           if (!m_delAckEvent.IsRunning ())
             {
-              NS_LOG_INFO ("Schedule a delayed ACK");
+              NS_LOG_INFO ("Schedule a delayed ACK" << m_tcb->m_kDelayedAckTimeout);
               // schedule a delayed ACK
               m_delAckEvent = Simulator::Schedule (
                 m_tcb->m_kDelayedAckTimeout, &QuicSocketBase::SendAck, this);
@@ -1304,7 +1304,7 @@ QuicSocketBase::SendDataPacket (SequenceNumber32 packetNumber,
       p = m_txBuffer->NextSequence (maxSize, packetNumber);
     }
 
-  uint32_t sz = p->GetSize ();
+  uint32_t sz = p->GetSize (); // 0
 
   // check whether the connection is appLimited, i.e. not enough data to fill a packet
   if (sz < maxSize and m_txBuffer->AppSize () == 0 and m_tcb->m_bytesInFlight.Get () < m_tcb->m_cWnd)
@@ -1550,7 +1550,9 @@ QuicSocketBase::ReTxTimeout ()
       // cancel pacing to send packet immediately
       m_pacingTimer.Cancel ();
 
+      if (GetTxAvailable() > 0) {
       SendDataPacket (next, s, m_connected);
+      }
       m_tcb->m_tlpCount++;
     }
   else if (m_tcb->m_alarmType == 3)
@@ -2803,7 +2805,7 @@ QuicSocketBase::ReceivedData (Ptr<Packet> p, const QuicHeader& quicHeader,
 
   // trigger the process for ACK handling if the received packet was not ACK only
   NS_LOG_DEBUG ("onlyAckFrames " << onlyAckFrames << " unsupportedVersion " << unsupportedVersion);
-  if (onlyAckFrames == 1 && !unsupportedVersion)
+  if (onlyAckFrames == 1 && !unsupportedVersion) // 0이면 only Ack frame
     {
       m_lastReceived = Simulator::Now ();
       NS_LOG_DEBUG ("Call MaybeQueueAck");
