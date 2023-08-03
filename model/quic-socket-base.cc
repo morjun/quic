@@ -2781,10 +2781,12 @@ QuicSocketBase::ReceivedData (Ptr<Packet> p, const QuicHeader& quicHeader,
       onlyAckFrames = m_quicl5->DispatchRecv (p, address);
 
       if (m_quicl4->IsServer ()) {
+          NS_LOG_INFO ("(Server) Current spin bit is " << quicHeader.GetSpinBit());
           m_spinBit = quicHeader.GetSpinBit() == QuicHeader::SPIN_ONE ? QuicHeader::SPIN_ONE : QuicHeader::SPIN_ZERO;
           NS_LOG_INFO ("(Server) Set spin bit to " << m_spinBit);
       }
       else {
+          NS_LOG_INFO ("(Client) Current spin bit is " << quicHeader.GetSpinBit());
           quicHeader.GetSpinBit() == QuicHeader::SPIN_ZERO ? m_spinBit = QuicHeader::SPIN_ONE : m_spinBit = QuicHeader::SPIN_ZERO; //spin
           NS_LOG_INFO ("(Client) Set spin bit to " << m_spinBit);
       }
