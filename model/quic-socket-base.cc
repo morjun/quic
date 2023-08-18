@@ -289,6 +289,10 @@ QuicSocketBase::GetTypeId (void)
                      "Receive QUIC packet from UDP protocol",
                      MakeTraceSourceAccessor (&QuicSocketBase::m_rxTrace),
                      "ns3::QuicSocketBase::QuicTxRxTracedCallback")
+    .AddTraceSource ("SpinBit",
+                     "Spin Bit of the QUIC packet",
+                     MakeTraceSourceAccessor (&QuicSocketBase::m_rxTrace),
+                     "ns3::TracedValueCallback::Uint32")
   ;
   return tid;
 }
